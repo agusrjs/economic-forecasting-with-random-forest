@@ -1,4 +1,4 @@
-# **Economic Forecasting with Random Forest**
+# **Interest Rate Impact Analysis with Predictive Models**
 
 This project explores predicting **FED trends** using **Random Forest** models, leveraging economic indicators such as CPI and the Dollar Exchange Rate. The dataset, sourced from [FRED - Federal Reserve Bank of St. Louis](https://fred.stlouisfed.org/), spans historical data starting from 1990.
 
