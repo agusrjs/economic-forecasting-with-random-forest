@@ -1,13 +1,5 @@
----
-title: "Análisis del impacto de la tasa de interés con modelos predictivos"
-output: html_notebook
----
-
 ## Librerías
 
-Importamos las librerías a utilizar.
-
-```{r}
 # Análisis financiero
 library(quantmod)
 
@@ -30,12 +22,8 @@ library(caret)
 library(ggplot2)
 ```
 
-## 1 Carga de datos
+# 1 Carga de datos
 
-Obtenemos los datos a trabajar, por un lado el registro histórico de la tasa de interés de la FED y por el otro el índice del precios al consumidor o inflación. Creamos un Data Frame para cada uno. Los datos son provistos por la [FRED](https://fred.stlouisfed.org/). Tomamos como inicio 1990.
-
-
-```{r}
 first_date <- "1990-01-01"
 
 # Obtener los datos de la tasa de interés de la FED y de la inflación (IPC)
@@ -52,18 +40,10 @@ ipc_df <- data.frame(
   Date = index(CPIAUCNS),
   IPC = as.numeric(CPIAUCNS[, 1])
 )
-```
 
-La inflación viene dada como suma acumulada, pero lo que nos interesa es el valor mensual, por lo que creamos una nueva columna que exprese esa diferencia.
-
-```{r}
 # Calcular el incremento mensual del IPC
 ipc_df$IPC_Monthly <- c(NA, diff(ipc_df$IPC))
-```
 
-Graficamos la evolución en el tiempo de los parámetros a analizar.
-
-```{r}
 # Graficar tasa de interés de la FED
 ggplot(fed_df, aes(x = Date, y = FED)) +
   geom_line() +
@@ -71,8 +51,7 @@ ggplot(fed_df, aes(x = Date, y = FED)) +
   xlab("Fecha") +
   ylab("Tasa (%)") +
   theme_minimal()
-```
-```{r}
+
 # Graficar inflación (IPC)
 ggplot(ipc_df, aes(x = Date, y = IPC_Monthly)) +
   geom_line() +
@@ -80,22 +59,15 @@ ggplot(ipc_df, aes(x = Date, y = IPC_Monthly)) +
   xlab("Fecha") +
   ylab("Índice") +
   theme_minimal()
-```
-## 2 Relación entre FED & IPC
 
-### 2.1 Correlación
-Analizamos la correlación entre la tasa de la FED y el IPC.
+# 2 Relación entre FED & IPC
 
-```{r}
+# 2.1 Correlación
+
 # Correlación entre la tasa de la FED y la inflación mes a mes
 merged_df <- merge(fed_df, ipc_df, by = "Date")
 correlacion <- cor(merged_df$FED, merged_df$IPC_Monthly, use = "complete.obs")
-print(correlacion)
-```
 
-El valor cercano a cero indica que no hay una correlación entre los datos. Teniendo en cuenta que la relación puede no darse en cada mes sino extendiéndose en el tiempo, vemos qué pasa tomando los valores año a año.
-
-```{r}
 # Correlación entre la tasa de la FED y la inflación año a año
 
 # Promedio anual de la FED
@@ -111,10 +83,7 @@ merged_annual <- merge(fed_annual, ipc_annual, by = "Year")
 merged_annual <- na.omit(merged_annual)
 correlacio_annual <- cor(merged_annual$FED, merged_annual$IPC_Annualy, use = "complete.obs")
 print(correlacio_annual)
-```
-El valor es muy similar y cercano a cero, por lo que no encontramos una correlación entre los datos. Vemos reflejados estos resultados en el gráfico de las dos variables juntas.
 
-```{r}
 ggplot(merged_df, aes(x = Date)) +
   geom_line(aes(y = FED, color = "FED")) +
   geom_line(aes(y = IPC_Monthly * 2, color = "IPC")) +  
@@ -128,20 +97,9 @@ ggplot(merged_df, aes(x = Date)) +
     color = "Variable"
   ) +
   theme_minimal()
-```
 
-### 2.2 Test de causalidad de Granger
+# 2.2 Test de causalidad de Granger
 
-El Test de Granger evalúa si una serie temporal X ayuda a predecir otra serie temporal Y. Se basa en la idea de que, si conocer valores pasados de X mejora la predicción de Y, entonces se dice que X causa a Y en el sentido de Granger.
-
-En este caso, probamos:
-
-1. FED → IPC (si la tasa de la FED afecta la inflación)
-2. IPC → FED (si la inflación afecta la tasa de la FED)
-
-Para esto creamos dos series temporales, una para la FED y otra para el IPC, que se usan para analizar el impacto de los meses anteriores en la variable actual.
-
-```{r}
 # Series temporaleS
 merged_df <- na.omit(merged_df)
 fed_ts <- ts(merged_df$FED, start = c(2000, 1), frequency = 12)
@@ -150,67 +108,9 @@ ipc_ts <- ts(merged_df$IPC_Monthly, start = c(2000, 1), frequency = 12)
 # Lags a utilizar: 12 meses
 granger_test <- grangertest(ipc_ts ~ fed_ts, order = 12) # FED -> IPC
 print(granger_test)
-```
 
-#### Prueba FED → IPC (granger_test_1)
+# 2.3 Rezagos y valores futuros
 
-El test compara dos modelos de regresión:  
-
-- **Modelo 1**:  
-  \[
-  IPC_t = \alpha + \sum_{i=1}^{12} \beta_i IPC_{t-i} + \sum_{i=1}^{12} \gamma_i FED_{t-i} + \varepsilon_t
-  \]  
-  Este modelo usa los valores pasados de **IPC** y **FED** para predecir el IPC actual.  
-
-- **Modelo 2**:  
-  \[
-  IPC_t = \alpha + \sum_{i=1}^{12} \beta_i IPC_{t-i} + \varepsilon_t
-  \]  
-  Este modelo usa solo los valores pasados de **IPC**, sin considerar la FED.  
-
-#### Interpretación
-
-| **Columna** | **Significado** |
-|------------|----------------|
-| **Res.Df** | Grados de libertad después del ajuste del modelo |
-| **Df** | Diferencia de grados de libertad entre los modelos |
-| **F** | Estadístico F del test de Granger |
-| **Pr(>F)** | Valor p para evaluar la significancia |
-
-##### 1 Res.Df (Residual Degrees of Freedom - Grados de libertad residuales)
-Representa los grados de libertad del modelo después de ajustar los parámetros. Los grados de libertad son el resultado de la diferencia entre el número de observaciones y la cantidad de parámetros estimados.  
-
-##### 2 Df (Degrees of Freedom - Diferencia de grados de libertad)
-Muestra la diferencia de grados de libertad entre los dos modelos:
-
-  \[
-  \text{Df} = \text{Res.Df Modelo 2} - \text{Res.Df Modelo 1}
-  \]
-  
-El valor de **Df** es igual a -12 porque el modelo completo tiene 12 parámetros adicionales debido a los rezagos de la segunda variable.
-
-##### 3 F (F-Statistic - Estadístico F)
-Es el valor del **test F**, que mide si el modelo completo (con ambas series temporales) explica significativamente más variabilidad que el modelo reducido. Se calcula como:
-
-  \[
-  F = \frac{(\text{Suma de cuadrados explicada por FED}) / 12}{(\text{Suma de cuadrados de los residuos}) / \text{Res.Df Modelo 1}}
-  \]
- 
-Si **F es grande**, significa que agregar FED mejora la predicción. Si **F es pequeño**, significa que la variable adicional no aporta información relevante.
-
-##### 4 Pr(>F) (P-Value - Valor P)
-Es la **probabilidad de obtener un valor F tan alto** si en realidad la serie no tiene efecto.  
-  - Si **p < 0.05**, se rechaza la hipótesis nula y se concluye que **existe causalidad en Granger**.  
-  - Si **p > 0.05**, no hay suficiente evidencia para decir que una variable causa la otra.  
-
-##### Resultados 
-Como el p-valor obtenido es menor a 0.05, podemos rechazar la hipótesis nula y concluir que FED causa IPC en el sentido de Granger (al menos con un 95% de confianza). Esto indica que la FED tiene un impacto significativo en la inflación (IPC).
-
-### 2.3 Rezagos y valores futuros
-
-A partir de los resultados del Test de causalidad de Granger, se plantea ver si los rezagos de la FED afectan al IPC actual. Para esto asignamos a fecha sus valores anteriores (rezagos). Luego vemos la correlación entre los rezagos de la FED y la inflación.
-
-```{r}
 # Crear los rezagos de FED
 
 months <- 36
@@ -230,9 +130,7 @@ correlation_table_1 <- data.frame(
 )
 
 correlation_table_1
-```
 
-```{r}
 # Gráfico de correlaciones
 
 # Etiquetas del eje X
@@ -248,23 +146,9 @@ ggplot(correlation_table_1, aes(x = Lag, y = Correlation, fill = Correlation)) +
        x = "Rezagos de la FED",
        y = "Correlación") +
   scale_y_reverse()
-```
-Al observar los valores de correlación notamos:
 
-1. **Correlación Negativa:** Todos los rezagos muestran una correlación negativa, lo que sugiere que un aumento en la tasa de interés de la FED tiende a estar asociado con una disminución en el IPC, aunque la magnitud de esta relación es pequeña.
+# 3 Otros indicadores de inflación
 
-2. **Correlación Débil:** Los valores de correlación son pequeños, lo que no indica una fuerte relación.
-
-3. **Estabilidad en los Lags:** La correlación tiende a mantenerse bastante estable a lo largo de todos los rezagos, lo que sugiere que los efectos de la política monetaria de la FED sobre la inflación pueden no ser inmediatos y no disminuyen abruptamente con el paso del tiempo.
-
-4. **Tendencia Ligeramente Decreciente:** La correlación parece volverse levemente más negativa a medida que los rezagos aumentan, alcanzando su valor más bajo más allá de los primeros 12 meses. Este comportamiento podría sugerir que el impacto de las decisiones de la FED sobre la inflación tiene un efecto gradual que persiste durante varios meses.
-
-Aunque los resultados muestran que existe una relación entre los rezagos de la tasa de la FED y la inflación, la relación es débil y no parece ser inmediata ni fuerte.
-
-## 3 Otros indicadores de inflación
-Al no observar datos claramente relevantes, podría ser útil considerar otros factores para una comprensión más precisa del impacto de la política monetaria sobre la inflación. Incorporamos al análisis distintates variables del IPC, como son el IPC núcleo, que excluye precios estacionales y coyunturales y la expectativa de inflación según la [Universidad de Michigan](https://fred.stlouisfed.org/graph/?g=4PA). Veamos la correlación para cada una de las variables.
-
-```{r}
 # IPC Núcleo
 getSymbols("CPILFESL", src = "FRED", from = first_date, to = Sys.Date())
 core_ipc_df <- data.frame(
@@ -304,9 +188,7 @@ correlation_table_2 <- data.frame(
 )
 
 correlation_table_2
-```
 
-```{r}
 # Tabla con las tres correlaciones
 correlation_graph_2 <- data.frame(
   Lag = rep(1:months, 3),
@@ -331,23 +213,13 @@ ggplot(correlation_graph_2, aes(x = Lag, y = IPC, fill = IPC)) +
        y = "Correlación") +
   facet_wrap(~Type, scales = "fixed")  # Mantener el mismo eje en todos los gráficos
 
-```
-
-La relación entre los rezagos y las distintas variantes de IPC es siempre negativa. Mientras la expectativa de IPC muestra valores algo más significativos en cuanto a la correlación, esto se hace más evidente en el IPC núcleo. Vemos como resultaría un modelo de regresión para predecir dicha variable.
-
-```{r}
 # Regresión
 fed_lags <- paste("FED_lag", 1:months, sep = "_", collapse = " + ")
 model <- lm(paste("IPC_core_Monthly ~", fed_lags), data = merged_df)
 summary(model)
-```
 
-El modelo explica alrededor del 50% de la variabilidad en el IPC núcleo, con una cantidad moderada de error residual, indicando que una parte significativa de esta variabilidad no está siendo explicada por los lags de la FED. Esperamos mejores resultados al hacer un análisis limitado en el tiempo.
+# 4 Últimos años
 
-## 4 Últimos años
-Filtramos los datos para quedarnos con los valores desde 2020 a la actualidad. Luego, observamos nuevamente la correlación entre las variables.
-
-```{r}
 # Filtrar los datos según la fecha
 start_date <- as.Date("2000-01-01")
 filtered_df <- merged_df[merged_df$Date >= start_date, ]
@@ -366,8 +238,7 @@ correlation_table_3 <- data.frame(
 )
 
 correlation_table_3
-```
-```{r}
+
 # Tabla con las tres correlaciones
 correlation_graph_3 <- data.frame(
   Lag = rep(1:months, 3),
@@ -389,14 +260,9 @@ ggplot(correlation_graph_3, aes(x = Lag, y = IPC, fill = IPC)) +
        x = "Rezagos de la FED",
        y = "Correlación") +
   facet_wrap(~Type, scales = "fixed")  # Mantener el mismo eje en todos los gráficos
-```
 
-Tanto en el IPC como en el IPC Núcleo se observa un descalce inicial con la tasa de interés, con una correlación negativa que alcanza su punto más significativo más allá del mes 30. A partir de ese momento, ambas variables comienzan a alinearse gradualmente con la tasa de la FED. En contraste, la expectativa de IPC muestra una alineación mucho más temprana, lo que podría explicarse por la rapidez con la que los agentes económicos incorporan los cambios en la tasa de interés en sus expectativas de inflación.
+# 5 Modelo
 
-## 5 Modelo
-Para evaluar la relación entre la tasa de interés de la FED y la inflación núcleo (IPC Core), entrenamos un modelo de Random Forest con diferentes rezagos de la tasa como variables predictoras.
-
-```{r}
 # Normalizar los datos (excepto 'Date')
 filtered_df_norm <- filtered_df %>%
   mutate(across(-Date, ~ as.numeric(scale(.))))
@@ -429,26 +295,8 @@ print(paste("R-squared: ", rsq))
 # Importancia de variables
 importance(model_rf)
 
-```
-El modelo de Random Forest sugiere que aproximadamente la mitad de la variabilidad en la inflación núcleo puede explicarse a partir de los rezagos de la tasa de la FED. Esto indica que la política monetaria tiene un impacto significativo, aunque no es el único factor en juego.
+# 6 Hiperparámetros
 
-En cuanto a la importancia de los distintos rezagos, se observa que los efectos más relevantes se producen alrededor del año de retraso, lo que es consistente con la idea de que los cambios en la tasa de interés tardan en transmitirse a la inflación. Sin embargo, también aparecen rezagos de mayor plazo, sugiriendo que la política monetaria puede seguir teniendo impacto incluso varios años después de su implementación.
-
-Estos resultados refuerzan la noción de que la relación entre tasas de interés e inflación no es inmediata y que existen efectos diferidos que deben considerarse al analizar la efectividad de las decisiones de política económica.
-
-## 6 Hiperparámetros
-
-Introducimos ciertos hiperparámetros para ajustar el modelo.
-
-**mtry:** Número de variables consideradas en cada división del árbol.
-**ntree:** Número total de árboles en el bosque.
-**nodesize:** Número máximo de observaciones en cada nodo terminal.
-
-Buscamos determinar el mejor valor de mtry para optimizar el rendimiento del modelo a través de una evaluación del error fuera de la bolsa.
-
-El error fuera de la bolsa (OOB) es una medida de desempeño en Random Forest, calculada utilizando los datos que no se emplean en la construcción de cada árbol. Estos datos, que se dejan fuera en cada iteración debido al muestreo con reemplazo, se utilizan luego para evaluar el modelo, proporcionando una estimación precisa sin necesidad de un conjunto de validación.
-
-```{r}
 set.seed(54)
 
 # Definir hiperparámetros a probar
@@ -472,12 +320,9 @@ ggplot(df, aes(x = mtry, y = oob_error)) +
   xlab("Número de variables seleccionadas en cada división (mtry)") +
   ylab("Error OOB") +
   theme_minimal()
-```
 
-### 6.1 Validación cruzada
-Realizamos una validación cruzada para encontrar el mejor valor de mtry y entrenar un modelo de Random Forest más robusto. El desempeño del modelo se evalúa mediante el error cuadrático medio (MSE) y el coeficiente de determinación (R-squared).
+# 6.1 Validación cruzada
 
-```{r}
 # Encontrar el mejor mtry
 rf_tuned <- train(IPC_core_Monthly ~ ., data = trainData, 
                   method = "rf", 
@@ -503,14 +348,8 @@ rsq <- 1 - sum((predictions - testData$IPC_core_Monthly)^2) / sum((testData$IPC_
 print(paste("MSE: ", mse))
 print(paste("R-squared: ", rsq))
 
-```
-### 6.2 Otros hiperparámetros
+# 6.2 Otros hiperparámetros
 
-**ntree (Número de árboles): **Controla la cantidad de árboles en el bosque. A mayor número de árboles, el modelo tiende a ser más robusto y preciso, pero a costa de un mayor tiempo de cómputo.
-
-**nodesize (Tamaño del nodo):** Establece el número mínimo de observaciones requeridas en un nodo terminal. Valores más bajos permiten mayor flexibilidad en la división, lo que puede generar modelos más complejos y susceptibles al sobreajuste. Valores más altos hacen que los árboles sean más generales y menos propensos al sobreajuste, pero pueden ser demasiado simples.
-
-```{r}
 # Definir los valores de ntree y nodesize a probar
 ntree_values <- c(100, 200, 500, 1000)
 nodesize_values <- c(1, 5, 10, 20)
@@ -557,19 +396,9 @@ for (ntree_value in ntree_values) {
 
 # Imprimir los resultados
 print(results)
-```
 
-No se observan diferencias significativas en el rendimiento al variar los hiperparámetros mtry, ntree y nodesize, por lo que se puede concluir que un ajuste moderado es suficiente para obtener buenos resultados. Las variaciones en el MSE y R-squared son mínimas, lo que sugiere que no es necesario realizar cambios complejos en los hiperparámetros. Se puede optar por una configuración eficiente sin comprometer el rendimiento, priorizando el rendimiento general sobre la optimización extrema de los parámetros.
+# 7 Impacto mundial
 
-## 7 Impacto mundial
-Incorporamos al análisis los ratio de conversión del dólar a monedas de otros países para ver cómo afecta la tasa de la FED en el mundo. Utilizamos las siguientes modenas:
-
-1. [Euro](https://fred.stlouisfed.org/series/DEXUSEU), U.S. Dollars to One Euro
-2. [Yuan](https://fred.stlouisfed.org/series/DEXCHUS), Chinese Yuan Renminbi to One U.S. Dollar
-3. [Yen](https://fred.stlouisfed.org/series/DEXJPUS), Japanese Yen to One U.S. Dollar
-4. [Real](https://fred.stlouisfed.org/series/DEXBZUS), Brazilian Reals to One U.S. Dollar
-
-```{r}
 # Obtener los datos de la tasa de cambio
 start_currency_date <- as.Date("2000-01-01")
 
@@ -600,11 +429,7 @@ real_df <- data.frame(
   Date = index(DEXBZUS),
   USD_BRL = as.numeric(DEXBZUS[, 1])
 )
-```
 
-Creamos una función $get_monthly_avg$ que toma un data frame y lo agrega según su promedio mensual, para luego poder comparar estos valores con la tasa de interés mensual.
-
-```{r}
 get_monthly_avg <- function(df, currency_name) {
   # Columna 'Date' esté en formato Date
   df$Date <- as.Date(df$Date)
@@ -623,11 +448,7 @@ get_monthly_avg <- function(df, currency_name) {
   
   return(df_monthly_avg)
 }
-```
 
-Aplicamos la función y creamos el data frame necesario. Luego graficamos un mapa de calor para ver la correlación del comportamiento de cada moneda con la variación de la tasa de la FED.
-
-```{r}
 # Promedio mensual
 euro_df_monthly <- get_monthly_avg(dolar_euro_df, "EUR_USD")
 yuan_df_monthly <- get_monthly_avg(yuan_df, "USD_CNY")
@@ -660,11 +481,7 @@ ggplot(correlation_melted, aes(x = Var1, y = Var2, fill = value)) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   labs(title = "Correlación entre monedas y la tasa de la FED", x = NULL, y = NULL) 
-```
 
-El mapa de calor nos deja ver que las monedas se devalúan frente al dólar en al subir la tasa de interés de la FED, sobre todo el Yuan y el Yen, de China y Japón respectivamente. Esto confirma el impacto mundial de esta variable. Vemos cómo se explica la variabilidad de la moneda china a través de la FED y sus rezagos.
-
-```{r}
 # Lags de la FED
 merged_df_lags <- merged_df %>%
   select(Date, starts_with("FED_Lag"))  # Si las columnas de lags empiezan con "FED_Lag"
@@ -693,7 +510,3 @@ mse <- mean((test_data$USD_CNY - predictions)^2)
 r2 <- summary(lm_model)$r.squared
 
 cat("MSE:", mse, "\nR²:", r2, "\n")
-
-```
-
-Según el R² del modelo se puede explicar cerca del 70% de la variabilidad en el tipo de cambio USD/CNY por la tasa de la FED. Sin embargo, a diferencia de la inflación, los rezagos no parecen tener significancia en el modelo, por lo que el impacto, en este caso, es inmediato.
