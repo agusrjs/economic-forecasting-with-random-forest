@@ -1,4 +1,3 @@
-<<<<<<< Updated upstream
 # **Predictive Models for Interest Rate**
 
 #### **Abstract**
@@ -437,25 +436,6 @@ Both in **CPI** and **Core CPI**, there is an initial misalignment with the inte
 To assess the relationship between the FED interest rate and core inflation (Core CPI), we trained a **Random Forest** model using different lags of the interest rate as predictor variables.
 
 ```r
-=======
-# Predictive Models for Interest Rate
-
-This project examines the relationship between the Federal Reserve's interest rate and inflation, focusing on its global impact on currencies. Using historical data and models like regression and Random Forest, it shows the delayed effects on inflation and the immediate impact on exchange rates.
-
-## Relationship Between FED & CPI
-
-After loading the data, a correlation analysis was performed between the FED's interest rate and the CPI, aiming to understand how fluctuations in interest rates affect inflation levels. While the monthly correlation was weak, a clearer relationship emerged when the data was analyzed on an annual basis, suggesting that the FED's impact on inflation may be more pronounced over the long term. In addition to the CPI, other inflation indicators, such as core CPI and inflation expectations, were included to provide a broader and more robust context for understanding how the FED's monetary policy influences economic behavior. These indicators were analyzed using statistical techniques and predictive models.
- 
-![FED and CPI](asset/000030.png)  
-
-## Model
-
-To predict inflation behavior based on interest rates, various predictive models, including regression and Random Forest, were trained. These models were used to identify patterns and make predictions, providing insight into how the FED influences the CPI and other economic indicators over time.
-
-![Correlation](asset/000060.png) 
-
-'''{r}
->>>>>>> Stashed changes
 # Normalize the data (except 'Date')
 filtered_df_norm <- filtered_df %>%
   mutate(across(-Date, ~ as.numeric(scale(.))))
@@ -487,21 +467,16 @@ print(paste("R-squared: ", rsq))
 
 # Variable importance
 importance(model_rf)
-'''
+```
 
-<<<<<<< Updated upstream
 The **Random Forest** model suggests that approximately half of the variability in core inflation can be explained by the lags of the FED interest rate. This indicates that monetary policy has a significant impact, though it is not the only factor at play.
 
 Regarding the importance of different lags, the most relevant effects occur around the one-year lag, which is consistent with the idea that changes in interest rates take time to affect inflation. However, longer lags also emerge, suggesting that monetary policy can still have an impact even several years after its implementation.
 
 These results reinforce the notion that the relationship between interest rates and inflation is not immediate, and that there are delayed effects to consider when analyzing the effectiveness of economic policy decisions.
-=======
-## Hyperparameters
->>>>>>> Stashed changes
 
-During the modeling phase, hyperparameters of the models were tuned to improve accuracy. Parameters such as tree depth in Random Forest were adjusted to achieve more precise and reliable results. Hyperparameters were evaluated using techniques like cross-validation and out-of-bag (OOB) error.
+---
 
-<<<<<<< Updated upstream
 ### 6 **Hyperparameters**
 
 We introduced certain hyperparameters to fine-tune the model.
@@ -781,16 +756,3 @@ When adjusting the model's hyperparameters, we observed that a moderate adjustme
 Finally, we incorporated exchange rate data to observe the global impact of the FED's interest rate. We observed that the impact of the FED's rate on foreign currencies, such as the Yuan and the Yen, is immediate, with lags having no significance in the model. This reinforces the idea that, unlike inflation, the effect of the FED's monetary policy on exchange rates is immediate and direct.
 
 In summary, while the FED's interest rate has a significant impact on inflation with gradual and long-term effects, its influence on exchange rates is immediate, especially in currencies like the Yuan and the Yen.
-=======
-![OOB](asset/000070.png) 
-
-## Global Impact
-
-One of the key aspects of this project was analyzing the global impact of the FED's monetary policy, particularly on foreign exchange rates. It was found that changes in the FED's interest rate have an immediate effect on foreign currencies, indicating that markets respond quickly to FED decisions on a global scale.
-
-![Heat Map](asset/000080.png) 
-
-## Conclusion
-
-The analysis concluded that the FED's interest rate has a significant impact on inflation, but its effects are gradual and long-term. In contrast, the impact of the FED's monetary policy on exchange rates is immediate and direct. This highlights the importance of the FED not only in the U.S. economy but also in the global economy, as its decisions affect both domestic inflation and the stability of foreign currencies.
->>>>>>> Stashed changes
