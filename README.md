@@ -5,22 +5,6 @@ This project examines the relationship between the Federal Reserve's interest ra
 ## Relationship Between FED & CPI
 
 After loading the data, a correlation analysis was performed between the FED's interest rate and the CPI, aiming to understand how fluctuations in interest rates affect inflation levels. While the monthly correlation was weak, a clearer relationship emerged when the data was analyzed on an annual basis, suggesting that the FED's impact on inflation may be more pronounced over the long term. In addition to the CPI, other inflation indicators, such as core CPI and inflation expectations, were included to provide a broader and more robust context for understanding how the FED's monetary policy influences economic behavior. These indicators were analyzed using statistical techniques and predictive models.
-
-![FED & CPI](asset/000030.png) 
-
-## Model
-
-To predict inflation behavior based on interest rates, various predictive models, including regression and Random Forest, were trained. These models were used to identify patterns and make predictions, providing insight into how the FED influences the CPI and other economic indicators over time.
-
-![Correlation](asset/000060.png)
-
-# Predictive Models for Interest Rate
-
-This project examines the relationship between the Federal Reserve's interest rate and inflation, focusing on its global impact on currencies. Using historical data and models like regression and Random Forest, it shows the delayed effects on inflation and the immediate impact on exchange rates.
-
-## Relationship Between FED & CPI
-
-After loading the data, a correlation analysis was performed between the FED's interest rate and the CPI, aiming to understand how fluctuations in interest rates affect inflation levels. While the monthly correlation was weak, a clearer relationship emerged when the data was analyzed on an annual basis, suggesting that the FED's impact on inflation may be more pronounced over the long term. In addition to the CPI, other inflation indicators, such as core CPI and inflation expectations, were included to provide a broader and more robust context for understanding how the FED's monetary policy influences economic behavior. These indicators were analyzed using statistical techniques and predictive models.
  
 ![FED and CPI](asset/000030.png)  
 
@@ -30,8 +14,7 @@ To predict inflation behavior based on interest rates, various predictive models
 
 ![Correlation](asset/000060.png) 
 
-'''{r}
->>>>>>> Stashed changes
+```r
 # Normalize the data (except 'Date')
 filtered_df_norm <- filtered_df %>%
   mutate(across(-Date, ~ as.numeric(scale(.))))
@@ -63,7 +46,7 @@ print(paste("R-squared: ", rsq))
 
 # Variable importance
 importance(model_rf)
-'''
+```
 
 ## Hyperparameters
 
